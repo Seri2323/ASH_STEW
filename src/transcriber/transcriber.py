@@ -1,14 +1,15 @@
 import os
 import time
+
 import whisper
+
 from utils.logger import Logger
-from utils.dev_tools import DevTools
 
 
 class LocalTranscriber:
     """Handles on-device speech-to-text using local Whisper models."""
 
-    def __init__(self, MODEL_SIZE: str = "small") -> None:
+    def __init__(self, MODEL_SIZE: str = "large") -> None:
         """
         Initializes the transcriber and loads the model into local memory.
         Warning: Loading the model takes a few seconds.
@@ -59,13 +60,13 @@ class LocalTranscriber:
             start_transcribe = time.time()
 
             # - - - fp16=False prevents warnings on CPUs/standard laptops
-            if LANGUAGE != "" or LANGUAGE is not None:
+            if LANGUAGE:
                 result = self.model.transcribe(
                     temp_filename, fp16=False, language=LANGUAGE
                 )
             else:
                 result = self.model.transcribe(temp_filename, fp16=False)
-            Logger.log_debug(f"Language:  {result["language"]}")
+            Logger.log_debug(f"Language:  {result['language']}")
 
             process_time = time.time() - start_transcribe
             transcript_text = result["text"].strip()
