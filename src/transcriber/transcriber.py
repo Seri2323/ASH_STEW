@@ -9,7 +9,7 @@ from utils.logger import Logger
 class LocalTranscriber:
     """Handles on-device speech-to-text using local Whisper models."""
 
-    def __init__(self, MODEL_SIZE: str = "large") -> None:
+    def __init__(self, MODEL_SIZE: str = "medium") -> None:
         """
         Initializes the transcriber and loads the model into local memory.
         Warning: Loading the model takes a few seconds.
@@ -33,8 +33,11 @@ class LocalTranscriber:
         Logger.log_debug(f"Model loaded into memory in {load_time:.2f} seconds.")
 
     def transcribe_binary(
-        self, AUDIO_BYTES: bytes, FILE_EXTENSION: str = "mp3", LANGUAGE: str = "en"
-    ) -> str:
+        self,
+        AUDIO_BYTES: bytes,
+        FILE_EXTENSION: str = "mp3",
+        LANGUAGE: str = "en",
+    ) -> dict[str, any]:
         """
         Takes raw audio bytes, temporarily writes them to disk,
         transcribes them locally, and enforces zero-retention cleanup.
@@ -45,7 +48,7 @@ class LocalTranscriber:
             LANGUAGE (str): Optional language to force the transcription in
 
         Returns:
-            Temporary file to be deleted after usage (str)
+            dict[str, Any]: The transcription result which is the full whisper dictionary containing text, segments, and word-level timestamps.
         """
         temp_filename = f"temp_transcription_buffer.{FILE_EXTENSION}"
 
@@ -62,26 +65,25 @@ class LocalTranscriber:
             # - - - fp16=False prevents warnings on CPUs/standard laptops
             if LANGUAGE:
                 result = self.model.transcribe(
-                    temp_filename, fp16=False, language=LANGUAGE
+                    temp_filename, fp16=False, language=LANGUAGE, word_timestamps=True
                 )
             else:
                 result = self.model.transcribe(temp_filename, fp16=False)
             Logger.log_debug(f"Language:  {result['language']}")
 
             process_time = time.time() - start_transcribe
-            transcript_text = result["text"].strip()
 
-            # 3. Log the performance metrics
+            # - - - 3. Log the performance metrics
             Logger.log_info(f"Transcription complete in {process_time:.2f} seconds.")
 
-            return transcript_text
+            return result
 
         except Exception as e:
             Logger.log_error(f"Local transcription failed: {str(e)}")
             raise
 
         finally:
-            # 4. Zero-Retention: Guarantee the file is deleted even if it crashes
+            # - - - 4. Zero-Retention: Guarantee the file is deleted even if it crashes
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
                 Logger.log_debug("Temporary audio buffer securely deleted.")
